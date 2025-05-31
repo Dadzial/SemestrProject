@@ -3,13 +3,7 @@ import {IData, Query} from "../models/data.model";
 
 export default class DataService {
 
-    public async createData(dataParams: {
-        temperature: any;
-        pressure: any;
-        humidity: any;
-        deviceId: string;
-        readingDate: Date
-    }) {
+    public async createData(dataParams: IData) {
         try {
             const dataModel = new DataModel(dataParams);
             await dataModel.save();
