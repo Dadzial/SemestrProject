@@ -1,0 +1,158 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+.value {
+  margin-left: 15px;
+}
+
+.logo {
+  background: url("assets/Ki.jpg");
+  background-size: cover;
+  width: 4vh;
+  height: 4vh;
+  margin: 3px;
+}
+
+.main-container {
+  margin-top: 5vh;
+  width: 100%;
+  padding: 0 2rem;
+  box-sizing: border-box;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.main-content {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 3rem;
+  width: 100%;
+}
+
+.main-device {
+  flex: 0 0 300px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-device .MuiCard-root {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chart-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.secondary-devices {
+  width: 100%;
+  margin-top: -1rem;
+
+}
+
+.secondary-devices h2 {
+  color: #006081;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-family: Arial, sans-serif;
+}
+
+.devices-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.devices-container .MuiCard-root,
+.main-device .MuiCard-root {
+  width: 270px;
+  align-items: center;
+  min-height: 150px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.devices-container .MuiCard-root:hover,
+.main-device .MuiCard-root:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+@media (max-width: 1200px) {
+  .main-content {
+    flex-direction: column;
+  }
+  
+  .main-device {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 2rem;
+  }
+  
+  .main-device .MuiCard-root {
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-container {
+    padding: 0 1rem;
+  }
+  
+  .devices-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .devices-container .MuiCard-root {
+    width: 100%;
+    max-width: 500px;
+  }
+}
