@@ -6,7 +6,7 @@ import bodyParser from "body-parser";
 import mongoose from "mongoose";
 
 class App {
-    private app: express.Application;
+    app: express.Application;
 
 
     constructor(Controllers: Controller[]) {

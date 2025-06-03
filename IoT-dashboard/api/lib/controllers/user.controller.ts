@@ -6,6 +6,7 @@ import UserService from "../modules/services/user.service";
 import PasswordService from "../modules/services/password.service";
 import TokenService from "../modules/services/token.service";
 import {authorizeRoles} from "../middlewares/role.middleware";
+import DataService from "../modules/services/data.service";
 
 class UserController implements Controller {
     public path = '/api/user';
