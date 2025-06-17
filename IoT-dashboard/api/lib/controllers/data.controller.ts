@@ -16,8 +16,8 @@ let testArr = [4,5,6,3,5,3,7,5,13,5,6,4,3,6,3,6];
 class DataController implements Controller {
     public path = "/api/data"
     public router = Router()
-    public espEndpoint= "http://192.168.2.191/data"
-    public espEndpointTwo="http://192.168.2.191/ds18b20/temp"
+    public espEndpoint= "http://192.168.2.191/data" //to do zmiany
+    public espEndpointTwo="http://192.168.2.191/ds18b20/temp" //to do zmiany
     private io: Server;
 
     constructor(private dataService: DataService, io: Server) {
@@ -31,6 +31,7 @@ class DataController implements Controller {
         this.router.get(`${this.path}/esp-temp`,this.getStoredTempFromEsp);
         this.router.post(`${this.path}/fetch-and-save`, this.fetchAndSaveEspData);
         this.router.post(`${this.path}/fetch-temp`,this.fetchAndSaveEspDataTwo);
+        this.router.post(`${this.path}/fetch-all`, this.fetchAndSaveAllDevices);
         this.router.get(`${this.path}/latest`,auth, this.getLatestReadingsFromAllDevices);
         this.router.post(`${this.path}/add/:id`,auth,checkIdParam, this.addData );
         this.router.get(`${this.path}/get/:id` ,auth,checkIdParam,this.getelement )
@@ -40,7 +41,6 @@ class DataController implements Controller {
         this.router.delete(`${this.path}/delete/:id`,auth,checkIdParam,this.deleteElement)
         this.router.get(`${this.path}/:id/:num`,auth, checkIdParam, this.getPeriodData);
         this.router.delete(`${this.path}/clear/fetch-save`, this.clearFetchSaveData);
-        this.router.delete(`${this.path}/clear/fetch-temp`, this.clearFetchSaveDataTwo);
     }
 
 
@@ -224,11 +224,20 @@ class DataController implements Controller {
     private fetchAndSaveEspDataTwo = async (req: Request, res: Response) => {
         try {
             const espDataTwo = await this.getEspDataTwo();
+
+
+            const normalizedEspDataTwo = typeof espDataTwo === 'number' ?
+                { temperature: espDataTwo, deviceId: 'ds18b20-1' } :
+                {
+                    temperature: espDataTwo.temperature ?? espDataTwo.temp,
+                    deviceId: espDataTwo.deviceId ?? 'ds18b20-1'
+                };
+
             const schema = Joi.object({
                 temperature: Joi.number().required(),
                 deviceId: Joi.string().required()
             });
-            const validatedData = await schema.validateAsync(espDataTwo);
+            const validatedData = await schema.validateAsync(normalizedEspDataTwo);
             const readingDate: IData = {
                 temperature: validatedData.temperature,
                 deviceId: validatedData.deviceId,
@@ -243,15 +252,65 @@ class DataController implements Controller {
         }
     };
 
-    private clearFetchSaveDataTwo = async (req: Request, res: Response) => {
+    private fetchAndSaveAllDevices = async (req: Request, res: Response) => {
         try {
-            await DataModel.deleteMany({});
-            res.status(200).json({ message: 'All fetch and save data has been cleared successfully' });
-        } catch (error) {
-            console.error('Error clearing fetch and save data:', error);
-            res.status(500).json({ error: 'Failed to clear fetch and save data' });
+            const [dhtData, d18b20Raw] = await Promise.all([
+                this.getEspData(),
+                this.getEspDataTwo()
+            ]);
+
+            const normalizedD18b20 = typeof d18b20Raw === 'number'
+                ? { temperature: d18b20Raw, deviceId: 'ds18b20-1' }
+                : {
+                    temperature: d18b20Raw.temperature ?? d18b20Raw.temp,
+                    deviceId: d18b20Raw.deviceId ?? 'ds18b20-1'
+                };
+
+            const dhtSchema = Joi.object({
+                temperature: Joi.number().required(),
+                humidity: Joi.number().optional(),
+                deviceId: Joi.string().required()
+            });
+
+            const d18b20Schema = Joi.object({
+                temperature: Joi.number().required(),
+                deviceId: Joi.string().required()
+            });
+
+            const validatedDhtData = await dhtSchema.validateAsync(dhtData);
+            const validatedD18b20Data = await d18b20Schema.validateAsync(normalizedD18b20);
+
+            const readingDht: IData = {
+                temperature: validatedDhtData.temperature,
+                humidity: validatedDhtData.humidity,
+                deviceId: validatedDhtData.deviceId,
+                createdAt: new Date()
+            };
+
+            const readingD18b20: IData = {
+                temperature: validatedD18b20Data.temperature,
+                deviceId: validatedD18b20Data.deviceId,
+                createdAt: new Date()
+            };
+
+            await this.dataService.createData(readingDht);
+            await this.dataService.createData(readingD18b20);
+
+            const allDhtData = await DataModel.find({ deviceId: validatedDhtData.deviceId }).sort({ createdAt: -1 });
+            const allD18b20Data = await DataModel.find({ deviceId: validatedD18b20Data.deviceId }).sort({ createdAt: -1 });
+
+            res.status(200).json({
+                message: 'Dane z ESP zostały zapisane.',
+                data: {
+                    dht: allDhtData,
+                    d18b20: allD18b20Data
+                }
+            });
+        } catch (error: any) {
+            console.error(`Error in fetchAndSaveAllDevices: ${error.message}`);
+            res.status(500).json({ error: error.message });
         }
-    }
+    };
 
 
 }

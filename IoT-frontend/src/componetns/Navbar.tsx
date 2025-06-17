@@ -10,15 +10,19 @@ import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import LanguageIcon from '@mui/icons-material/Language';
+import {FormControlLabel, Switch} from "@mui/material";
 
 const pages = ['Devices state'];
 
 interface NavbarProps {
     onRestart: () => void;
+    showAll: boolean;
+    onToggleShowAll: React.Dispatch<React.SetStateAction<boolean>>;
+
 }
 
 
-function Navbar({onRestart}:NavbarProps) {
+function Navbar({onRestart, onToggleShowAll}:NavbarProps) {
     const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
 
 
@@ -159,9 +163,22 @@ function Navbar({onRestart}:NavbarProps) {
                         >
                             Logout
                         </Button>
-
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    defaultChecked={false}
+                                    onChange={(e) => onToggleShowAll(e.target.checked)}
+                                    sx={{
+                                        color: '#006081',
+                                        '&.Mui-checked': {
+                                            color: '#006081',
+                                        },
+                                    }}
+                                />
+                            }
+                            label="Chart from All Devices"
+                        />
                     </Box>
-
                     <div className="logo"></div>
 
                 </Toolbar>

@@ -24,6 +24,7 @@ export default function Dashboard() {
     const [mainDeviceId, setMainDeviceId] = useState(1);
     const [kitchenData, setKitchenData] = useState<{ temperature: number; humidity: number } | null>(null);
     const [livingRoomData, setLivingRoomData] = useState<{ temperature: number } | null>(null);
+    const [showAll, setShowAll] = useState(false);
 
     const mainDevice = allDevices.find((device) => device.id === mainDeviceId);
     const otherDevices = allDevices.filter((device) => device.id !== mainDeviceId);
@@ -85,9 +86,11 @@ export default function Dashboard() {
         return undefined;
     };
 
+    const chartDeviceId = showAll ? 0 : mainDeviceId;
+
     return (
         <div className="app">
-            <Navbar onRestart={handleRestart} />
+            <Navbar onRestart={handleRestart} showAll={showAll} onToggleShowAll={setShowAll} />
             <div className="main-container">
                 <div className="main-content">
                     <div className="main-device">
@@ -100,7 +103,7 @@ export default function Dashboard() {
                         )}
                     </div>
                     <div className="chart-container">
-                        <Chart deviceId={mainDeviceId} />
+                        <Chart deviceId={chartDeviceId} showAllDevices={showAll} />
                     </div>
                 </div>
                 <div className="secondary-devices">
