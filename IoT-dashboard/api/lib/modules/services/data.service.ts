@@ -39,16 +39,17 @@ export default class DataService {
                     if (latest.length) {
                         latestData.push(latest[0]);
                     } else {
-                        latestData.push({ deviceId: i } as IData);
+                        latestData.push({deviceId: i} as unknown as IData);
                     }
                 } catch (error) {
                     console.error(`Błąd pobierania danych urządzenia ${i}: ${error.message}`);
-                    latestData.push({ deviceId: i } as IData);
+                    latestData.push({deviceId: i} as unknown as IData);
                 }
             })
         );
         return latestData;
     }
+
 
     public async deleteData(deviceID: string) {
         return DataModel.deleteMany({deviceId: deviceID});

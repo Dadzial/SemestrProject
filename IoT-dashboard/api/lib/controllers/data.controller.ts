@@ -6,29 +6,41 @@ import DataService from "../modules/services/data.service";
 import DataModel from "../modules/schemas/data.schema";
 import Joi from "joi";
 import {IData} from "../modules/models/data.model";
+import {auth} from "../middlewares/auth.middleware";
+import {Server} from "socket.io";
+import axios from "axios";
+import cron from "node-cron";
 
 let testArr = [4,5,6,3,5,3,7,5,13,5,6,4,3,6,3,6];
 
 class DataController implements Controller {
     public path = "/api/data"
     public router = Router()
+    public espEndpoint= "http://192.168.2.191/data"
+    public espEndpointTwo="http://192.168.2.191/ds18b20/temp"
+    private io: Server;
 
-    constructor(private dataService: DataService) {
+    constructor(private dataService: DataService, io: Server) {
+        this.io = io;
         this.intitailizeRoutes();
+        this.initializeWebSocketHandler();
     }
 
     private intitailizeRoutes( ) {
-        this.router.get(`${this.path}/latest`, this.getLatestReadingsFromAllDevices);
-        this.router.post(`${this.path}/add/:id`,checkIdParam, this.addData );
-        this.router.get(`${this.path}/get/:id` ,checkIdParam,this.getelement )
-        this.router.get(`${this.path}/max` ,checkIdParam,this.getMaxElement,)
-        this.router.get(`${this.path}/latest/:count`,checkIdParam,this.getlastNElements)
-        this.router.delete(`${this.path}/delete/all`,checkIdParam,this.deleteAll)
-        this.router.delete(`${this.path}/delete/:id`,checkIdParam,this.deleteElement)
-        this.router.get(`${this.path}/:id/:num`, checkIdParam, this.getPeriodData);
-        this.router.delete(`${this.path}/all`, this.cleanAllDevices);
-        this.router.delete(`${this.path}/:id`, checkIdParam, this.cleanDeviceData);
-
+        this.router.get(`${this.path}/esp-data`,this.getStoredDataFromEsp);
+        this.router.get(`${this.path}/esp-temp`,this.getStoredTempFromEsp);
+        this.router.post(`${this.path}/fetch-and-save`, this.fetchAndSaveEspData);
+        this.router.post(`${this.path}/fetch-temp`,this.fetchAndSaveEspDataTwo);
+        this.router.get(`${this.path}/latest`,auth, this.getLatestReadingsFromAllDevices);
+        this.router.post(`${this.path}/add/:id`,auth,checkIdParam, this.addData );
+        this.router.get(`${this.path}/get/:id` ,auth,checkIdParam,this.getelement )
+        this.router.get(`${this.path}/max` ,auth,checkIdParam,this.getMaxElement,)
+        this.router.get(`${this.path}/latest/:count`,auth,checkIdParam,this.getlastNElements)
+        this.router.delete(`${this.path}/delete/all`,auth,checkIdParam,this.deleteAll)
+        this.router.delete(`${this.path}/delete/:id`,auth,checkIdParam,this.deleteElement)
+        this.router.get(`${this.path}/:id/:num`,auth, checkIdParam, this.getPeriodData);
+        this.router.delete(`${this.path}/clear/fetch-save`, this.clearFetchSaveData);
+        this.router.delete(`${this.path}/clear/fetch-temp`, this.clearFetchSaveDataTwo);
     }
 
 
@@ -53,8 +65,7 @@ class DataController implements Controller {
             const validatedData = await schema.validateAsync({ air, deviceId: parseInt(id, 10) });
             const readingDate : IData = {
                 temperature: validatedData.air[0].value,
-                pressure: validatedData.air[1].value,
-                humidity: validatedData.air[2].value,
+                humidity: validatedData.air[1].value,
                 deviceId: validatedData.deviceId,
             };
             await this.dataService.createData(readingDate);
@@ -97,16 +108,6 @@ class DataController implements Controller {
         response.status(200).send({ message: "Data deleted successfully", updatedArray: testArr });
     }
 
-    private getAllDeviceData = async (req: Request, res: Response) => {
-        const { id } = req.params;
-        try {
-            const data = await this.dataService.query(id);
-            res.status(200).json(data);
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
-
     private getLatestReadingsFromAllDevices = async (req: Request, res: Response) => {
         try {
             const data = await this.dataService.getAllNewest();
@@ -130,24 +131,125 @@ class DataController implements Controller {
         }
     }
 
-    private cleanDeviceData = async (req: Request, res: Response) => {
-        const { id } = req.params;
+    public getStoredDataFromEsp = async (req: Request, res: Response) => {
         try {
-            await this.dataService.deleteData(id);
-            res.status(200).json({ message: "Dane urządzenia usunięte." });
-        } catch (error) {
+            const data = await this.getEspData();
+            res.status(200).json(data);
+        } catch (error: any) {
             res.status(500).json({ error: error.message });
         }
     }
 
-    private cleanAllDevices = async (req: Request, res: Response) => {
+    public getStoredTempFromEsp = async (req: Request, res: Response) => {
         try {
-            for (let i = 0; i < 17; i++) {
-                await this.dataService.deleteData(i.toString());
-            }
-            res.status(200).json({ message: "Wszystkie dane zostały usunięte." });
-        } catch (error) {
+            const data = await this.getEspDataTwo();
+            res.status(200).json(data);
+        } catch (error: any) {
             res.status(500).json({ error: error.message });
+        }
+    }
+
+    public async getEspData() {
+        const response = await axios.get(this.espEndpoint);
+        return response.data;
+    }
+
+    public async getEspDataTwo() {
+        const response = await axios.get(this.espEndpointTwo);
+        return response.data;
+    }
+
+    private initializeWebSocketHandler() {
+        this.io.on('connection', (socket) => {
+            console.log('A user connected');
+
+            const interval = setInterval(async () => {
+                try {
+                    const dataFromDHT = await this.getEspData();
+                    const dataFromD18b20 = await this.getEspDataTwo();
+                    socket.emit('dataFromDHT', dataFromDHT);
+                    socket.emit('dataFromD18b20', dataFromD18b20);
+                } catch (error: any) {
+                    console.error(`Error fetching data from ESP: ${error.message}`);
+                }
+            }, 3000);
+
+            socket.on('disconnect', () => {
+                console.log('A user disconnected');
+                clearInterval(interval);
+            });
+        });
+    }
+
+    private fetchAndSaveEspData = async (req: Request, res: Response) => {
+        try {
+            const espData = await this.getEspData();
+
+            const schema = Joi.object({
+                temperature: Joi.number().required(),
+                humidity: Joi.number().required(),
+                deviceId: Joi.string().required()
+            });
+
+            const validatedData = await schema.validateAsync(espData);
+
+            const readingDate: IData = {
+                temperature: validatedData.temperature,
+                humidity: validatedData.humidity,
+                deviceId: validatedData.deviceId,
+                createdAt: new Date()
+            };
+
+            await this.dataService.createData(readingDate);
+
+            const allData = await DataModel.find({ deviceId: validatedData.deviceId }).sort({ createdAt: -1 });
+
+            res.status(200).json({ message: 'Dane z ESP zostały zapisane.', data: allData });
+        } catch (error: any) {
+            console.error(`Error in fetchAndSaveEspData: ${error.message}`);
+            res.status(500).json({ error: error.message });
+        }
+    };
+
+    private clearFetchSaveData = async (req: Request, res: Response) => {
+        try {
+            await DataModel.deleteMany({});
+            res.status(200).json({ message: 'All fetch and save data has been cleared successfully' });
+        } catch (error) {
+            console.error('Error clearing fetch and save data:', error);
+            res.status(500).json({ error: 'Failed to clear fetch and save data' });
+        }
+    }
+
+    private fetchAndSaveEspDataTwo = async (req: Request, res: Response) => {
+        try {
+            const espDataTwo = await this.getEspDataTwo();
+            const schema = Joi.object({
+                temperature: Joi.number().required(),
+                deviceId: Joi.string().required()
+            });
+            const validatedData = await schema.validateAsync(espDataTwo);
+            const readingDate: IData = {
+                temperature: validatedData.temperature,
+                deviceId: validatedData.deviceId,
+                createdAt: new Date()
+            };
+            await this.dataService.createData(readingDate);
+            const allData = await DataModel.find({ deviceId: validatedData.deviceId }).sort({ createdAt: -1 });
+            res.status(200).json({ message: 'Dane z ESP zostały zapisane.', data: allData });
+        } catch (error: any) {
+            console.error(`Error in fetchAndSaveEspDataTwo: ${error.message}`);
+            res.status(500).json({ error: error.message });
+        }
+    };
+
+    private clearFetchSaveDataTwo = async (req: Request, res: Response) => {
+        try {
+            await DataModel.deleteMany({});
+            res.status(200).json({ message: 'All fetch and save data has been cleared successfully' });
+        } catch (error) {
+            console.error('Error clearing fetch and save data:', error);
+            res.status(500).json({ error: 'Failed to clear fetch and save data' });
         }
     }
 

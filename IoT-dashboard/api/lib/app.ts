@@ -1,22 +1,30 @@
 import {config} from "./config";
-import express  from "express";
+import express from "express";
 import Controller from "./interfaces/controller";
 import morgan from "morgan";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
+import http from "http";
+import {Server, Socket} from "socket.io";
+import cors from "cors";
+
 
 class App {
     app: express.Application;
+    private server: http.Server;
+    public io: Server;
 
 
     constructor(Controllers: Controller[]) {
         this.app = express();
         this.initializeMiddlewares();
+        this.server = http.createServer(this.app);
+        this.initializeSocket();
         this.connectToDatabase();
         this.initializeControllers(Controllers);
     }
 
-    private initializeMiddlewares() :void {
+    private initializeMiddlewares(): void {
         this.app.use(bodyParser.json());
         this.app.use(morgan('dev'));
     }
@@ -26,6 +34,44 @@ class App {
             this.app.use("/", controller.router);
         });
     }
+
+    private initializeSocket(): void {
+        this.io = new Server(this.server, {
+            cors: {
+                origin: "http://localhost:5173",
+                methods: ["GET", "POST"],
+                allowedHeaders: ["Authorization"],
+                credentials: true
+            },
+        });
+
+
+        this.io.on("connection", (socket: Socket) => {
+            console.log(`Nowe połączenie: ${socket.id}`);
+
+
+            socket.on("message", (data: string) => {
+                console.log(`Wiadomość od ${socket.id}: ${data}`);
+                this.io.emit("message", data);
+            });
+
+
+            socket.on("disconnect", () => {
+                console.log(`Rozłączono: ${socket.id}`);
+            });
+        });
+
+
+        this.server.listen(config.socketPort, () => {
+            console.log(`WebSocket listening on port ${config.socketPort}`);
+        });
+    }
+
+
+    public getIo(): Server {
+        return this.io;
+    }
+
 
     private async connectToDatabase(): Promise<void> {
         try {
@@ -55,12 +101,11 @@ class App {
         });
     }
 
-
-
     public listen() {
         this.app.listen(config.port, () => {
             console.log(`Server is running on port ${config.port}`);
         });
     }
 }
+
 export default App;

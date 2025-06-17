@@ -13,8 +13,14 @@ import LanguageIcon from '@mui/icons-material/Language';
 
 const pages = ['Devices state'];
 
-function Navbar() {
+interface NavbarProps {
+    onRestart: () => void;
+}
+
+
+function Navbar({onRestart}:NavbarProps) {
     const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
+
 
     const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorElNav(event.currentTarget);
@@ -23,6 +29,13 @@ function Navbar() {
     const handleCloseNavMenu = () => {
         setAnchorElNav(null);
     };
+
+    const logout = async () => {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+    }
+
+
 
     return (
         <AppBar position="static" sx={{ backgroundColor: 'transparent', boxShadow: 'none' }}>
@@ -98,7 +111,7 @@ function Navbar() {
                     </Box>
                     <Box sx={{ flexGrow: 3, display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
                         <Button
-                            onClick={handleCloseNavMenu}
+                            onClick ={onRestart}
                             sx={{
                                 color: 'white',
                                 display: 'flex',
@@ -119,8 +132,34 @@ function Navbar() {
                                 },
                             }}
                         >
-                            Read Esp-Data
+                            Restart fetching data
                         </Button>
+                        <Button
+                            onClick={logout}
+                            sx={{
+                                color: 'white',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '30px',
+                                minHeight: '30px',
+                                padding: '0 16px',
+                                textTransform: 'none',
+                                margin: '0 16px',
+                                fontSize: '0.875rem',
+                                backgroundColor: '#006081',
+                                borderRadius: '4px',
+                                boxShadow: 'none',
+                                lineHeight: 1,
+                                '&:hover': {
+                                    backgroundColor: '#006081',
+                                    boxShadow: 'none',
+                                },
+                            }}
+                        >
+                            Logout
+                        </Button>
+
                     </Box>
 
                     <div className="logo"></div>

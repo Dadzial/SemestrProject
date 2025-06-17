@@ -3,10 +3,9 @@ import {IData} from "../models/data.model";
 
 export const dataSchema = new Schema<IData>({
     temperature: { type: Number, required: true },
-    pressure: { type: Number, required: true },
-    humidity: { type: Number, required: true },
-    readingDate: { type: Date, default: Date.now },
-    deviceId: {type: Number, required: true}
+    humidity: { type: Number, required: false},
+    createdAt: { type: Date, default: Date.now, index: { expires: 3600 } },
+    deviceId: {type: String, required: true}
 });
 
 export default  model<IData>('Params', dataSchema);

@@ -3,6 +3,7 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  overflow: hidden;
 }
 
 .logo {
@@ -75,6 +76,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  margin-left: 2vh;
+  margin-top: 1rem;
 }
 
 .main-device .MuiCard-root {
@@ -90,13 +93,13 @@
 
 .secondary-devices {
   width: 100%;
-  margin-top: -1rem;
+  margin-top: -6vh;
 
 }
 
 .secondary-devices h2 {
   color: #006081;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
   text-align: center;
   font-family: Arial, sans-serif;
 }
@@ -123,19 +126,32 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+@keyframes blinkRed {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px red);
+  }
+  50% {
+    filter: none;
+  }
+}
+
+.blink-red {
+  animation: blinkRed 1s infinite;
+}
+
 
 @media (max-width: 1200px) {
   .main-content {
     flex-direction: column;
   }
-  
+
   .main-device {
     flex: 0 0 auto;
     width: 100%;
     max-width: 500px;
     margin: 0 auto 2rem;
   }
-  
+
   .main-device .MuiCard-root {
     height: auto;
   }

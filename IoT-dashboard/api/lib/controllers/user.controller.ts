@@ -20,8 +20,8 @@ class UserController implements Controller {
     }
 
     private initializeRoutes() {
-        this.router.get(`${this.path}/all` ,  authorizeRoles('admin'), this.getAllUsers);
-        this.router.post(`${this.path}/create`, this.createNewOrUpdate);
+        this.router.get(`${this.path}/all` , this.getAllUsers);
+        this.router.post(`${this.path}/create`, authorizeRoles('admin'), this.createNewOrUpdate);
         this.router.post(`${this.path}/auth`, this.authenticate);
         this.router.post(`${this.path}/reset/:name`, this.updatePassword);
         this.router.delete(`${this.path}/clean-expired`, authorizeRoles('admin'), this.cleanExpiredTokens);

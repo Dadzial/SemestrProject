@@ -1,166 +1,208 @@
-import * as React from 'react';
-import Button from '@mui/material/Button';
 import { LineChart } from '@mui/x-charts/LineChart';
 import Box from '@mui/material/Box';
+import { useEffect, useState } from 'react';
 
-const oneMinute = 60 * 1000;
-const length = 50;
-
-const initialFirstData = Array.from<number>({ length }).map(
-    (_, __, array) => (array[array.length - 1] ?? 0) + randBetween(-100, 500),
-);
-const initialSecondData = Array.from<number>({ length }).map(
-    (_, __, array) => (array[array.length - 1] ?? 0) + randBetween(-500, 100),
-);
-
-const timeFormatter = new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-});
-
-export default function LiveLineChartNoSnap() {
-    const [running, setRunning] = React.useState(false);
-    const [date, setDate] = React.useState(new Date(2000, 0, 1, 0, 0, 0));
-    const [firstData, setFirstData] = React.useState(initialFirstData);
-    const [secondData, setSecondData] = React.useState(initialSecondData);
-
-    React.useEffect(() => {
-        if (!running) return;
-        const intervalId = setInterval(() => {
-            setDate((prev) => new Date(prev.getTime() + oneMinute));
-            setFirstData((prev) => [
-                ...prev.slice(1),
-                (prev[prev.length - 1] ?? 0) + randBetween(-500, 500),
-            ]);
-            setSecondData((prev) => [
-                ...prev.slice(1),
-                (prev[prev.length - 1] ?? 0) + randBetween(-500, 500),
-            ]);
-        }, 100);
-
-        return () => clearInterval(intervalId);
-    }, [running]);
-
-    return (
-        <Box
-            sx={{
-                width: '90%',
-                maxWidth: 600,
-                backgroundColor: '#006081',
-                borderRadius: 12,
-                boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.2)',
-                padding: 2,
-                margin: 'auto',
-                color: 'white',
-                position: 'relative',
-                left: '110px',
-            }}
-        >
-            <LineChart
-                height={200}
-                series={[
-                    {
-                        data: secondData,
-                        showMark: false,
-                        label: 'Temperature',
-                        color: '#4fc3f7',
-                    },
-                    {
-                        data: firstData,
-                        showMark: false,
-                        label: 'Humidity',
-                        color: '#ff8a65',
-                    },
-                ]}
-                xAxis={[
-                    {
-                        scaleType: 'point',
-                        data: Array.from({ length }).map(
-                            (_, i) => new Date(date.getTime() + i * oneMinute),
-                        ),
-                        valueFormatter: (value: Date) => timeFormatter.format(value),
-                    },
-                ]}
-                slotProps={{
-                    legend: {
-                        labelStyle: {
-                            fontWeight: 'bold',
-                            fontFamily: 'Inter, sans-serif',
-                            fill: '#fff',
-                        },
-                    },
-                }}
-                sx={{
-                    '.MuiChartsLegend-label': {
-                        fill: '#fff',
-                        fontWeight: 'bold',
-                        fontFamily: 'Arial, sans-serif',
-                    },
-                    '.MuiChartsAxis-tickLabel': {
-                        fill: '#fff',
-                        fontWeight: 'bold',
-                        fontFamily: 'Arial, sans-serif',
-                    },
-                    '.MuiChartsAxis-line': {
-                        stroke: '#fff',
-                    },
-                    '.MuiChartsAxis-label': {
-                        fill: '#fff',
-                        fontWeight: 'bold',
-                        fontFamily: 'Arial, sans-serif',
-                    },
-                    '.MuiLineElement-root': {
-                        strokeWidth: 2,
-                    },
-                    '.MuiChartsAxis-tick': {
-                        stroke: '#ffffff80',
-                    },
-                }}
-                margin={{ left: 50, right: 24, top: 40, bottom: 30 }}
-            />
-
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                <Button
-                    size="small"
-                    variant="contained"
-                    sx={{
-                        backgroundColor: '#ffffff',
-                        color: '#006081',
-                        fontFamily: 'Arial',
-                        fontWeight: 'bold',
-                        '&:hover': {
-                            backgroundColor: '#e6e6e6',
-                        },
-                    }}
-                    onClick={() => setRunning((p) => !p)}
-                >
-                    {running ? 'Stop' : 'Start'}
-                </Button>
-                <Button
-                    size="small"
-                    variant="contained"
-                    sx={{
-                        marginLeft: 1.5,
-                        color: '#006081',
-                        backgroundColor: '#ffffff',
-                        fontFamily: 'Arial',
-                        fontWeight: 'bold',
-                        '&:hover': {
-                            backgroundColor: '#e6e6e6',
-                        },
-                    }}
-                    onClick={() => {
-                        setFirstData(initialFirstData);
-                        setSecondData(initialSecondData);
-                    }}
-                >
-                    Reset
-                </Button>
-            </Box>
-        </Box>
-    );
+interface ChartData {
+  temperature: number;
+  humidity?: number;
+  readingDate: string;
+  deviceId?: string;
 }
 
-function randBetween(min: number, max: number) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
+export default function SensorDataChart({ deviceId }: { deviceId: number }) {
+  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log(`Fetching latest data for device ${deviceId}...`);
+        
+
+        const endpoint = deviceId === 1 
+          ? 'http://localhost:3100/api/data/fetch-and-save' 
+          : 'http://localhost:3100/api/data/fetch-temp';
+          
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.data || !Array.isArray(result.data)) {
+          throw new Error("Unexpected response format");
+        }
+
+        const sorted = result.data.sort(
+            (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+
+        const formattedData = sorted.map((item: any) => ({
+          temperature: item.temperature,
+          humidity: deviceId === 1 ? item.humidity : undefined,
+          readingDate: item.createdAt,
+          deviceId: item.deviceId
+        }));
+
+        setChartData(formattedData);
+        setError(null);
+      } catch (err: any) {
+        console.error('Error fetching chart data:', err.message);
+        setError('Could not load chart data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [deviceId]);
+
+  if (isLoading) {
+    return <div style={{ color: 'white', textAlign: 'center' }}>Loading chart data...</div>;
+  }
+
+  if (error) {
+    return (
+        <div style={{ color: 'red', textAlign: 'center', padding: '20px' }}>
+          Error loading chart data: {error}
+        </div>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+        <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
+          No data available for the selected device.
+        </div>
+    );
+  }
+
+  const timeFormatter = new Intl.DateTimeFormat(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const temperatureData = chartData.map(item => ({
+    value: item.temperature,
+    date: new Date(item.readingDate)
+  }));
+
+  const humidityData = chartData
+    .filter(item => item.humidity !== undefined)
+    .map(item => ({
+      value: item.humidity!,
+      date: new Date(item.readingDate)
+    }));
+
+
+  const series = [
+    {
+      data: temperatureData.map(item => item.value),
+      showMark: false,
+      label: 'Temperature (°C)',
+      color: '#4fc3f7',
+    }
+  ];
+
+
+  if (deviceId === 1 && humidityData.length > 0) {
+    series.push({
+      data: humidityData.map(item => item.value),
+      showMark: false,
+      label: 'Humidity (%)',
+      color: '#ff8a65',
+    });
+  }
+
+  return (
+    <Box
+      sx={{
+        width: '90%',
+        maxWidth: 600,
+        backgroundColor: '#006081',
+        borderRadius: 12,
+        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.2)',
+        padding: 2,
+        margin: 'auto',
+        position: 'relative',
+        left: '110px',
+      }}
+    >
+      <LineChart
+        height={300}
+        series={series}
+        xAxis={[
+          {
+            data: temperatureData.map(item => item.date),
+            scaleType: 'time',
+            valueFormatter: (date: Date) => timeFormatter.format(date),
+            tickLabelStyle: {
+              fill: '#ffffff',
+            },
+            stroke: '#ffffff',
+            tickSize: 6,
+          },
+        ]}
+        yAxis={[
+          {
+            tickLabelStyle: {
+              fill: '#ffffff',
+            },
+            stroke: '#ffffff',
+            tickSize: 6,
+          },
+        ]}
+        slotProps={{
+          legend: {
+            labelStyle: {
+              fontWeight: 'bold',
+              fontFamily: 'Inter, sans-serif',
+              fill: '#fff',
+            },
+          },
+        }}
+        sx={{
+          '.MuiChartsLegend-label': {
+            fill: '#fff',
+            fontWeight: 'bold',
+            fontFamily: 'Arial, sans-serif',
+          },
+          '.MuiChartsAxis-tickLabel': {
+            fill: '#fff',
+            fontWeight: 'bold',
+            fontFamily: 'Arial, sans-serif',
+          },
+          '.MuiChartsAxis-line': {
+            stroke: '#ffffff !important',
+            strokeWidth: 2,
+          },
+          '.MuiChartsAxis-label': {
+            fill: '#ffffff',
+            fontWeight: 'bold',
+            fontFamily: 'Arial, sans-serif',
+          },
+          '.MuiLineElement-root': {
+            strokeWidth: 2,
+          },
+          '.MuiChartsAxis-tick': {
+            stroke: '#ffffff !important',
+            strokeWidth: 2,
+          },
+        }}
+        margin={{ left: 60, right: 30, top: 40, bottom: 30 }}
+      />
+    </Box>
+  );
 }
